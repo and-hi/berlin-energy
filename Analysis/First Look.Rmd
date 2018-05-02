@@ -1,0 +1,77 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library('httr')
+library('XML')
+library('xml2')
+library('purrr')
+```
+
+```{r}
+b2 <- "http://httpbin.org/post"
+POST(b2, body = "A simple text string")
+POST(b2, body = list(x = "A simple text string"))
+POST(b2, body = list(y = upload_file(system.file("CITATION"))))
+blub <- POST(b2, body = list(x = "A simple text string"), encode = "json")
+
+POST(b2, body = NULL, verbose())
+POST(b2, body = FALSE, verbose())
+POST(b2, body = "", verbose())
+```
+
+
+```{r}
+vattenfall_url <- "https://www.vattenfall.de/SmeterEngine/networkcontrol"
+
+xml_berlin <- xml("<smeterengine><scale>DAY</scale><city>BERLIN</city><district><time_period begin='2013-06-12 15:40:00' end='2013-06-12 17:00:00' time_zone='CET'/></district></smeterengine>"
+)
+
+xml_spandau <- xml(
+  "<smeterengine> 
+<scale>DAY</scale> 
+<city>BERLIN</city> 
+<district name='Spandau'>
+<time_period begin='2013-06-05 00:00:00' end='2013-06-12 23:59:59' time_zone='CET'/> 
+</district> 
+</smeterengine> "
+)
+```
+
+
+```{r}
+berlin_response <- POST(vattenfall_url, body = "<smeterengine><scale>DAY</scale><city>BERLIN</city><district><time_period begin='2013-06-12 15:40:00' end='2013-06-12 17:00:00' time_zone='CET'/></district></smeterengine>", encode = "raw", verbose(),content_type_xml())
+http_status(berlin_response)
+headers(berlin_response)
+```
+
+```{r}
+berlin_response_xml <- xml(content(berlin_response, "text"))
+berlin_response_xml2 <- read_xml(content(berlin_response, "text"))
+
+xmlToDataFrame(berlin_response_xml2)
+xml_find_all(berlin_response_xml2, "//district")
+xml_length(berlin_response_xml2)
+xml_parent(berlin_response_xml2)
+
+x <- read_xml("http://www.ebi.ac.uk/ena/data/view/ERS445758&display=xml")
+x_list <- as_list(x)
+x_list <- as_list(berlin_response_xml2)
+
+x_df <- x_list %>% map('district') %>% flatten() %>% map_df(flatten)
+
+x_df
+
+time <- as.list(x_list[["smeterengine"]][["district"]][["period"]][["districtTimestampData"]])
+
+
+
+ 
+berlin_df <- x_list %>% map('district') %>% flatten() %>% flatten() %>% map_df(flatten)
+berlin_df$datetime <- x_list %>% map('district') %>% flatten() %>% flatten() %>% map_chr( ~ attr(.,"value"))
+str(x_list %>% map('district') %>% flatten() %>% flatten() %>% map_df(flatten))
+```
+
+
